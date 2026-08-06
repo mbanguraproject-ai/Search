@@ -36,16 +36,18 @@
      omnibox for the home page: SearchApp.submit() feeds straight into
      the same go() the native address bar uses everywhere else. */
   .field {
-    width:100%; max-width:600px;
+    width:100%; max-width:620px;
     display:flex; align-items:center; gap:10px;
     background:var(--field); border:1px solid var(--line);
-    border-radius:30px; padding:16px 18px 16px 24px; box-shadow:var(--shadow);
-    transition:border-color .15s ease;
+    border-radius:34px; padding:19px 20px 19px 26px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.05), 0 12px 30px rgba(0,0,0,0.07);
+    transition:border-color .15s ease, box-shadow .15s ease;
   }
+  .field:focus-within { box-shadow:0 2px 8px rgba(0,0,0,0.06), 0 16px 36px rgba(0,0,0,0.10); }
   .field:focus-within { border-color:var(--accent); }
   .field input {
     flex:1; min-width:0; border:none; outline:none; background:transparent;
-    color:var(--fg); font-size:17px; font-family:inherit;
+    color:var(--fg); font-size:18px; font-family:inherit;
   }
   .field input::placeholder { color:var(--muted); }
   .field .ficon {
@@ -92,24 +94,39 @@
     margin:0 4px 12px;
   }
   .feed-card {
-    display:flex; gap:12px; align-items:stretch;
+    display:flex; gap:14px; align-items:stretch;
     background:var(--field); border:1px solid var(--line);
-    border-radius:16px; overflow:hidden; margin-bottom:10px;
-    text-decoration:none; color:var(--fg); box-shadow:var(--shadow);
+    border-radius:20px; overflow:hidden; margin-bottom:14px;
+    text-decoration:none; color:var(--fg);
+    box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 8px 22px rgba(0,0,0,0.06);
   }
   .feed-card:active { background:rgba(128,128,128,0.10); }
   .feed-card .thumb {
-    width:96px; min-width:96px; background:var(--line);
+    width:118px; min-width:118px; background:var(--line);
     background-size:cover; background-position:center;
   }
-  .feed-card .body { padding:12px 14px 12px 0; flex:1; min-width:0; }
+  .feed-card .body { padding:15px 16px 15px 0; flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
   .feed-card .title {
-    font-size:14px; font-weight:600; line-height:1.35;
+    font-size:15.5px; font-weight:700; line-height:1.38; letter-spacing:-0.01em;
     display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
     overflow:hidden;
   }
   .feed-card .src { font-size:11px; color:var(--muted); margin-top:6px; text-transform:capitalize; }
-  .feed-card.no-thumb .body { padding-left:14px; }
+  .feed-card.no-thumb .body { padding-left:16px; }
+  /* Gentle entrance for feed cards */
+  @keyframes cardIn {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .feed-card { animation:cardIn .45s cubic-bezier(.22,.61,.36,1) both; }
+  /* Ripple on tappable surfaces */
+  .tile, .feed-card, .ficon { position:relative; overflow:hidden; }
+  .ripple {
+    position:absolute; border-radius:50%; transform:scale(0);
+    background:rgba(139,107,216,0.28); pointer-events:none;
+    animation:rippleOut .55s ease-out;
+  }
+  @keyframes rippleOut { to { transform:scale(2.4); opacity:0; } }
 </style>
 </head>
 <body>
@@ -228,8 +245,9 @@
     var head=document.createElement('div'); head.className='feed-head';
     head.textContent='Top stories';
     feedHost.appendChild(head);
-    items.slice(0,12).forEach(function(it){
+    items.slice(0,12).forEach(function(it, idx){
       var a=document.createElement('a'); a.className='feed-card'; a.href='javascript:void(0)';
+      a.style.animationDelay=(idx*55)+'ms';
       a.onclick=function(){ if(window.SearchApp&&window.SearchApp.open) window.SearchApp.open(it.link); };
       if (it.image){
         var t=document.createElement('div'); t.className='thumb';
@@ -264,6 +282,34 @@
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible' && !feedLoaded) loadFeed();
   });
+  // Ripple effect on tappable surfaces.
+  function addRipple(e){
+    var el = e.currentTarget;
+    var rect = el.getBoundingClientRect();
+    var size = Math.max(rect.width, rect.height);
+    var r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.width = r.style.height = size + 'px';
+    var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left - size/2;
+    var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top - size/2;
+    r.style.left = x + 'px';
+    r.style.top = y + 'px';
+    el.appendChild(r);
+    setTimeout(function(){ r.remove(); }, 560);
+  }
+  function bindRipples(){
+    document.querySelectorAll('.tile, .feed-card, .ficon').forEach(function(el){
+      if (el.__rippleBound) return;
+      el.__rippleBound = true;
+      el.addEventListener('pointerdown', addRipple);
+    });
+  }
+  bindRipples();
+  // Re-bind after tiles/feed re-render.
+  var _origRenderFeed = renderFeed;
+  renderFeed = function(items){ _origRenderFeed(items); bindRipples(); };
+  var _origRenderTiles = renderTiles;
+  renderTiles = function(){ _origRenderTiles(); bindRipples(); };
 </script>
 </body>
 </html>
