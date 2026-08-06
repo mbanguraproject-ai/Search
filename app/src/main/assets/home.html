@@ -127,6 +127,30 @@
     animation:rippleOut .55s ease-out;
   }
   @keyframes rippleOut { to { transform:scale(2.4); opacity:0; } }
+  /* Skeleton loading cards — mirror the real card shape, then shimmer */
+  .skel-card {
+    display:flex; gap:14px; align-items:stretch;
+    background:var(--field); border:1px solid var(--line);
+    border-radius:20px; overflow:hidden; margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 8px 22px rgba(0,0,0,0.06);
+  }
+  .skel-thumb { width:118px; min-width:118px; }
+  .skel-body { flex:1; padding:15px 16px; display:flex; flex-direction:column; gap:9px; justify-content:center; }
+  .skel-line { height:13px; border-radius:6px; }
+  .skel-line.w80 { width:80%; }
+  .skel-line.w60 { width:60%; }
+  .skel-line.src { height:10px; width:34%; margin-top:6px; }
+  .shimmer {
+    background:linear-gradient(100deg,
+      rgba(139,107,216,0.08) 30%,
+      rgba(139,107,216,0.20) 50%,
+      rgba(139,107,216,0.08) 70%);
+    background-size:220% 100%;
+    animation:shimmer 1.3s ease-in-out infinite;
+  }
+  @keyframes shimmer { from { background-position:180% 0; } to { background-position:-40% 0; } }
+  .feed-fade-out { animation:feedFade .22s ease forwards; }
+  @keyframes feedFade { to { opacity:0; transform:translateY(-6px); } }
 </style>
 </head>
 <body>
@@ -238,6 +262,24 @@
   var feedHost = document.getElementById('feed');
   var feedReqId = 0;
   var feedLoaded = false;
+  function showSkeletons(){
+    feedHost.innerHTML='';
+    feedHost.classList.remove('hidden');
+    var head=document.createElement('div'); head.className='feed-head';
+    head.textContent='Top stories';
+    feedHost.appendChild(head);
+    for (var i=0;i<5;i++){
+      var c=document.createElement('div'); c.className='skel-card';
+      var t=document.createElement('div'); t.className='skel-thumb shimmer';
+      var b=document.createElement('div'); b.className='skel-body';
+      var l1=document.createElement('div'); l1.className='skel-line w80 shimmer';
+      var l2=document.createElement('div'); l2.className='skel-line w60 shimmer';
+      var l3=document.createElement('div'); l3.className='skel-line src shimmer';
+      b.appendChild(l1); b.appendChild(l2); b.appendChild(l3);
+      c.appendChild(t); c.appendChild(b);
+      feedHost.appendChild(c);
+    }
+  }
 
   function renderFeed(items){
     feedHost.innerHTML='';
@@ -274,6 +316,9 @@
 
   function loadFeed(){
     if (!window.SearchApp || !window.SearchApp.getFeed) return;
+    // Show skeletons only when the feed is empty (first load), so a
+    // background refresh doesn't replace real cards with placeholders.
+    if (!feedHost.querySelector('.feed-card')) showSkeletons();
     feedReqId++;
     try { window.SearchApp.getFeed(feedReqId); } catch(e){}
   }
